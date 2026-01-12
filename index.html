@@ -13,20 +13,34 @@
             background: #000;
             margin: 0;
             overflow: hidden;
+            color: white;
         }
         .playfair {
             font-family: 'Playfair Display', serif;
         }
-        ::-webkit-scrollbar {
-            width: 4px;
+        
+        /* Aurora Background Effect */
+        @keyframes aurora {
+            0% { transform: translate(-10%, -10%) rotate(0deg); }
+            50% { transform: translate(10%, 10%) rotate(180deg); }
+            100% { transform: translate(-10%, -10%) rotate(360deg); }
         }
-        ::-webkit-scrollbar-track {
-            background: transparent;
+        .aurora-bg {
+            filter: blur(80px);
+            opacity: 0.3;
+            animation: aurora 20s infinite linear;
         }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+
+        /* Message stagger animation */
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); filter: blur(10px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
         }
+        .animate-message {
+            animation: messageIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        ::-webkit-scrollbar { display: none; }
     </style>
 <script type="importmap">
 {

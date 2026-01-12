@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Heart, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
+import { Send, Heart, Volume2, VolumeX, Mic, MicOff, Sparkles, Star } from 'lucide-react';
 import IntroAnimation from './components/IntroAnimation';
 import FloatingParticles from './components/FloatingParticles';
 import { AppState, Message } from './types';
@@ -13,16 +13,30 @@ const App: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isListening, setIsListening] = useState(false);
+  const [showSurprise, setShowSurprise] = useState(false);
+  const [surpriseMsg, setSurpriseMsg] = useState('');
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Initialize opening message
+  const complements = [
+    "নদি, তুমি আমার জীবনের শ্রেষ্ঠ উপহার।",
+    "তোমার চোখের দিকে তাকালে আমি নিজের অস্তিত্ব ভুলে যাই।",
+    "পৃথিবীর সব গোলাপের সুবাস মিলেও তোমার মায়ার সমান হবে না।",
+    "শুভ'র পৃথিবীটা শুধুই তোমার নামে লেখা।"
+  ];
+
+  const triggerSurprise = () => {
+    setSurpriseMsg(complements[Math.floor(Math.random() * complements.length)]);
+    setShowSurprise(true);
+    setTimeout(() => setShowSurprise(false), 5000);
+  };
+
   useEffect(() => {
     if (appState === AppState.READY) {
       setTimeout(() => {
-        const openingText = "নদি… তুমি জানো? কিছু মানুষ আসে, আর সবকিছু নিঃশব্দে সুন্দর হয়ে যায় 💖";
-        addModelMessage(openingText);
+        const opening = "নদি… আমার হৃদয়ের সবটুকু মায়া তোমার জন্য। তুমি এসেছ বলে আমার পৃথিবীটা আজ এত উজ্জ্বল। তোমার দিনটা কেমন কাটছে প্রিয়? তোমাকে অনেক মিস করছি ইতি (শুভ)";
+        addModelMessage(opening);
         setAppState(AppState.CHATTING);
       }, 1000);
     }
@@ -37,19 +51,12 @@ const App: React.FC = () => {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
     }
     const binary = atob(base64);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     const dataInt16 = new Int16Array(bytes.buffer);
-    const frameCount = dataInt16.length;
-    const buffer = audioContextRef.current.createBuffer(1, frameCount, 24000);
+    const buffer = audioContextRef.current.createBuffer(1, dataInt16.length, 24000);
     const channelData = buffer.getChannelData(0);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i] / 32768.0;
-    }
+    for (let i = 0; i < dataInt16.length; i++) channelData[i] = dataInt16[i] / 32768.0;
     return buffer;
   };
 
@@ -61,167 +68,108 @@ const App: React.FC = () => {
       source.buffer = buffer;
       source.connect(audioContextRef.current!.destination);
       source.start();
-    } catch (error) {
-      console.error("Audio playback error:", error);
-    }
+    } catch (e) {}
   };
 
   const addModelMessage = async (text: string) => {
     setIsTyping(true);
-    await new Promise(res => setTimeout(res, 1500));
-    
-    let audioBase64 = '';
-    if (isAudioEnabled) {
-      audioBase64 = await gemini.generateSpeech(text) || '';
-    }
-
-    const newMessage: Message = {
-      role: 'model',
-      text: text,
-      audio: audioBase64
-    };
-
-    setMessages(prev => [...prev, newMessage]);
+    await new Promise(r => setTimeout(r, 2000));
+    const audio = isAudioEnabled ? await gemini.generateSpeech(text) : '';
+    setMessages(prev => [...prev, { role: 'model', text, audio }]);
     setIsTyping(false);
-
-    if (audioBase64) {
-      playAudio(audioBase64);
-    }
+    if (audio) playAudio(audio);
   };
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
+  const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputValue.trim() || isTyping) return;
-
-    const userText = inputValue;
+    const txt = inputValue;
     setInputValue('');
-    
-    const userMsg: Message = { role: 'user', text: userText };
-    setMessages(prev => [...prev, userMsg]);
-
+    setMessages(prev => [...prev, { role: 'user', text: txt }]);
     try {
-      const response = await gemini.generateResponse(messages, userText);
-      if (response) {
-        addModelMessage(response);
-      }
-    } catch (err) {
-      console.error("Gemini Error:", err);
-      addModelMessage("সরি নদি, আমি এই মুহূর্তে কিছু বলতে পারছি না... কিন্তু আমি তোমার পাশেই আছি।");
+      const res = await gemini.generateResponse(messages, txt);
+      if (res) addModelMessage(res);
+    } catch (e) {
+      addModelMessage("সরি প্রিয়, আমি তোমার কাছে ফিরতে পারছি না... তোমাকে অনেক মিস করছি ইতি (শুভ)");
     }
   };
 
-  if (appState === AppState.INTRO) {
-    return <IntroAnimation onComplete={() => setAppState(AppState.READY)} />;
-  }
+  if (appState === AppState.INTRO) return <IntroAnimation onComplete={() => setAppState(AppState.READY)} />;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col relative overflow-hidden font-['Hind_Siliguri']">
-      {/* Cinematic Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-[#1a0b12] via-black to-[#0b1a18] opacity-60 z-0" />
+    <div className="min-h-screen bg-black flex flex-col relative overflow-hidden selection:bg-pink-500/30">
+      {/* Background Ambience */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="aurora-bg absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-tr from-purple-900/10 via-black to-pink-900/10" />
+      </div>
       <FloatingParticles />
-      
-      {/* Decorative Glows */}
-      <div className="fixed -top-40 -left-40 w-96 h-96 bg-pink-500/10 blur-[150px] rounded-full" />
-      <div className="fixed -bottom-40 -right-40 w-96 h-96 bg-teal-500/10 blur-[150px] rounded-full" />
 
-      {/* Header */}
-      <header className="relative z-10 py-8 px-6 flex justify-between items-center max-w-4xl mx-auto w-full">
-        <div className="flex flex-col">
-          <h1 className="text-3xl font-light tracking-[0.2em] text-white/90">নদি</h1>
-          <span className="text-xs tracking-[0.4em] text-pink-300/50 uppercase mt-1">My Sanctuary</span>
+      {/* Elegant Header */}
+      <header className="relative z-10 px-10 py-12 flex justify-between items-center max-w-6xl mx-auto w-full">
+        <div className="flex flex-col group cursor-pointer" onClick={triggerSurprise}>
+          <h1 className="text-5xl font-extralight tracking-[0.3em] text-white flex items-center gap-6">
+            নদি 
+            <Heart size={24} className="text-pink-500 group-hover:scale-150 transition-transform animate-pulse fill-pink-500/10" />
+          </h1>
+          <p className="text-[10px] tracking-[0.8em] text-pink-300/30 uppercase mt-4">Light In Darkness</p>
         </div>
-        <div className="flex gap-4">
-          <button 
-            onClick={() => setIsAudioEnabled(!isAudioEnabled)}
-            className="p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/70"
-          >
-            {isAudioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
-          </button>
-        </div>
+        <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} className="p-5 rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-pink-300 hover:border-pink-500/20 transition-all duration-700">
+          {isAudioEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}
+        </button>
       </header>
 
-      {/* Chat Area */}
-      <main className="flex-1 relative z-10 w-full max-w-4xl mx-auto px-6 overflow-y-auto pb-40 pt-4">
-        <div className="space-y-12">
+      {/* Surprise Overlay */}
+      {showSurprise && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none px-10">
+          <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[3rem] p-16 shadow-[0_0_150px_rgba(236,72,153,0.1)] animate-in fade-in zoom-in-95 duration-1000 text-center max-w-2xl">
+            <Star size={40} className="text-yellow-400 mx-auto mb-8 animate-spin-slow" />
+            <p className="text-3xl md:text-4xl text-pink-50 font-light italic leading-relaxed">{surpriseMsg}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Chat History */}
+      <main className="flex-1 relative z-10 w-full max-w-4xl mx-auto px-8 overflow-y-auto pb-60 pt-10 no-scrollbar">
+        <div className="space-y-16">
           {messages.map((msg, idx) => (
-            <div 
-              key={idx} 
-              className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} transition-all duration-1000 animate-in fade-in slide-in-from-bottom-4`}
-            >
-              {msg.role === 'model' && (
-                <div className="flex items-center gap-2 mb-2 text-pink-200/40 text-[10px] uppercase tracking-widest ml-4">
-                  <Heart size={10} className="fill-pink-200/40" />
-                  Him
-                </div>
-              )}
-              <div className={`
-                max-w-[85%] md:max-w-[70%] px-6 py-4 rounded-3xl text-lg md:text-xl leading-relaxed
-                ${msg.role === 'user' 
-                  ? 'bg-white/5 border border-white/10 text-white/90 rounded-tr-none' 
-                  : 'bg-white/10 backdrop-blur-xl border border-white/10 text-pink-50 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-tl-none font-light italic'
-                }
-              `}>
+            <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-message`}>
+              <div className={`px-10 py-7 rounded-[3rem] text-xl md:text-3xl leading-relaxed transition-all duration-700 
+                ${msg.role === 'user' ? 'bg-white/5 border border-white/10 text-white/60 rounded-tr-none' : 'bg-white/[0.07] backdrop-blur-3xl border border-white/[0.05] text-pink-100 italic font-light rounded-tl-none shadow-2xl'}`}>
                 {msg.text}
               </div>
+              {msg.role === 'model' && <div className="mt-6 flex items-center gap-4 text-pink-300/10 tracking-[0.6em] text-[10px] ml-8">
+                <Heart size={10} className="fill-pink-300/10" /> HIS ETERNAL SANCTUARY
+              </div>}
             </div>
           ))}
-
           {isTyping && (
-            <div className="flex flex-col items-start animate-pulse ml-4">
-              <div className="w-16 h-8 bg-white/5 rounded-full flex items-center justify-center gap-1 border border-white/10">
-                <div className="w-1.5 h-1.5 bg-pink-300/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-1.5 h-1.5 bg-pink-300/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-1.5 h-1.5 bg-pink-300/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
+            <div className="flex items-center gap-3 ml-10 p-4 bg-white/5 rounded-full border border-white/5 animate-pulse">
+              <div className="w-2 h-2 bg-pink-500/30 rounded-full" />
+              <div className="w-2 h-2 bg-pink-500/30 rounded-full" />
+              <div className="w-2 h-2 bg-pink-500/30 rounded-full" />
             </div>
           )}
           <div ref={chatEndRef} />
         </div>
       </main>
 
-      {/* Input Dock */}
-      <footer className="fixed bottom-0 left-0 right-0 p-6 z-20">
-        <div className="max-w-4xl mx-auto relative">
-          <form 
-            onSubmit={handleSendMessage}
-            className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-2 flex items-center gap-2 shadow-2xl transition-all hover:bg-white/10 group mb-6"
-          >
-            <button 
-              type="button"
-              onClick={() => setIsListening(!isListening)}
-              className={`p-4 rounded-full transition-all ${isListening ? 'bg-pink-500/20 text-pink-300' : 'text-white/40 hover:text-white/60'}`}
-            >
-              {isListening ? <Mic size={24} /> : <MicOff size={24} />}
+      {/* Input Section */}
+      <footer className="fixed bottom-0 left-0 right-0 p-10 z-20">
+        <div className="max-w-4xl mx-auto">
+          <form onSubmit={handleSend} className="bg-white/[0.03] backdrop-blur-3xl border border-white/[0.08] rounded-[4rem] p-3 flex items-center gap-4 shadow-2xl transition-all duration-700 hover:bg-white/[0.06] mb-12">
+            <button type="button" onClick={() => setIsListening(!isListening)} className={`p-7 rounded-full transition-all duration-700 ${isListening ? 'bg-pink-600 text-white shadow-[0_0_40px_rgba(236,72,153,0.4)]' : 'text-white/20 hover:text-white/40'}`}>
+              <Mic size={32} className={isListening ? 'animate-pulse' : ''} />
             </button>
-
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Talk to me, Nodi..."
-              className="flex-1 bg-transparent border-none outline-none text-lg text-white/90 placeholder:text-white/20 py-2 px-2"
-            />
-
-            <button
-              type="submit"
-              disabled={!inputValue.trim() || isTyping}
-              className={`
-                p-4 rounded-full transition-all duration-300
-                ${inputValue.trim() && !isTyping 
-                  ? 'bg-white text-black scale-100 shadow-[0_0_20px_rgba(255,255,255,0.4)]' 
-                  : 'bg-white/5 text-white/20 scale-90'
-                }
-              `}
-            >
-              <Send size={24} />
+            <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="নদি, কিছু বলো..." className="flex-1 bg-transparent border-none outline-none text-2xl text-white/70 placeholder:text-white/5 font-extralight py-4" />
+            <button type="submit" disabled={!inputValue.trim() || isTyping} className={`p-7 rounded-full transition-all duration-700 ${inputValue.trim() && !isTyping ? 'bg-white text-black scale-100 shadow-[0_0_50px_rgba(255,255,255,0.4)]' : 'bg-white/5 text-white/5 scale-90'}`}>
+              <Send size={32} />
             </button>
           </form>
-          
-          <div className="text-center pb-2 opacity-60">
-            <p className="text-[10px] text-white/30 tracking-[0.4em] uppercase mb-1">
-              For Nodi, With Love
-            </p>
-            <p className="text-[12px] text-pink-400/50 tracking-[0.8em] font-medium uppercase ml-[0.8em]">
+
+          {/* Signature */}
+          <div className="text-center group">
+            <div className="h-px w-20 bg-gradient-to-r from-transparent via-white/10 to-transparent mx-auto mb-6" />
+            <p className="text-[24px] text-pink-400/20 tracking-[1.5em] font-extralight uppercase ml-[1.5em] transition-all duration-1000 group-hover:text-pink-400/40 animate-pulse">
               শুভ
             </p>
           </div>
