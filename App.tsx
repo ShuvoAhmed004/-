@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Heart, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
 import IntroAnimation from './components/IntroAnimation';
-import PhotoGallery from './components/PhotoGallery';
 import FloatingParticles from './components/FloatingParticles';
 import { AppState, Message } from './types';
 import { gemini } from './services/geminiService';
@@ -112,15 +111,11 @@ const App: React.FC = () => {
   };
 
   if (appState === AppState.INTRO) {
-    return <IntroAnimation onComplete={() => setAppState(AppState.GALLERY)} />;
-  }
-
-  if (appState === AppState.GALLERY) {
-    return <PhotoGallery onComplete={() => setAppState(AppState.READY)} />;
+    return <IntroAnimation onComplete={() => setAppState(AppState.READY)} />;
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col relative overflow-hidden font-['Hind_Siliguri']">
       {/* Cinematic Background */}
       <div className="fixed inset-0 bg-gradient-to-br from-[#1a0b12] via-black to-[#0b1a18] opacity-60 z-0" />
       <FloatingParticles />
@@ -146,7 +141,7 @@ const App: React.FC = () => {
       </header>
 
       {/* Chat Area */}
-      <main className="flex-1 relative z-10 w-full max-w-4xl mx-auto px-6 overflow-y-auto pb-32 pt-4">
+      <main className="flex-1 relative z-10 w-full max-w-4xl mx-auto px-6 overflow-y-auto pb-40 pt-4">
         <div className="space-y-12">
           {messages.map((msg, idx) => (
             <div 
@@ -154,7 +149,7 @@ const App: React.FC = () => {
               className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} transition-all duration-1000 animate-in fade-in slide-in-from-bottom-4`}
             >
               {msg.role === 'model' && (
-                <div className="flex items-center gap-2 mb-2 text-pink-200/40 text-[10px] uppercase tracking-widest">
+                <div className="flex items-center gap-2 mb-2 text-pink-200/40 text-[10px] uppercase tracking-widest ml-4">
                   <Heart size={10} className="fill-pink-200/40" />
                   Him
                 </div>
@@ -172,7 +167,7 @@ const App: React.FC = () => {
           ))}
 
           {isTyping && (
-            <div className="flex flex-col items-start animate-pulse">
+            <div className="flex flex-col items-start animate-pulse ml-4">
               <div className="w-16 h-8 bg-white/5 rounded-full flex items-center justify-center gap-1 border border-white/10">
                 <div className="w-1.5 h-1.5 bg-pink-300/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                 <div className="w-1.5 h-1.5 bg-pink-300/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -189,7 +184,7 @@ const App: React.FC = () => {
         <div className="max-w-4xl mx-auto relative">
           <form 
             onSubmit={handleSendMessage}
-            className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-2 flex items-center gap-2 shadow-2xl transition-all hover:bg-white/10 group"
+            className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-2 flex items-center gap-2 shadow-2xl transition-all hover:bg-white/10 group mb-6"
           >
             <button 
               type="button"
@@ -222,9 +217,12 @@ const App: React.FC = () => {
             </button>
           </form>
           
-          <div className="mt-4 text-center">
-            <p className="text-[10px] text-white/20 tracking-[0.3em] uppercase">
-              Designed for Noor with infinite love
+          <div className="text-center pb-2 opacity-60">
+            <p className="text-[10px] text-white/30 tracking-[0.4em] uppercase mb-1">
+              For Nodi, With Love
+            </p>
+            <p className="text-[12px] text-pink-400/50 tracking-[0.8em] font-medium uppercase ml-[0.8em]">
+              শুভ
             </p>
           </div>
         </div>

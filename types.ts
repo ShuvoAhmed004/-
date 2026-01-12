@@ -12,7 +12,6 @@ export interface VoiceConfig {
 
 export enum AppState {
   INTRO = 'INTRO',
-  GALLERY = 'GALLERY',
   READY = 'READY',
   CHATTING = 'CHATTING'
 }
