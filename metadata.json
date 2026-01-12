@@ -1,0 +1,7 @@
+{
+  "name": "Nodi's Sanctuary",
+  "description": "An emotionally intelligent romantic AI experience created exclusively for Nodi, featuring cinematic visuals, poetic interactions, and a gentle voice.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
